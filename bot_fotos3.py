@@ -1475,6 +1475,18 @@ def _update_cells_by_headers(ws, row_index: int, updates: Dict[str, Any]) -> Non
             raise RuntimeError(f"Falta columna '{k}' en hoja '{ws.title}'")
         ws.update_cell(row_index, col_map[k], v)
 
+def get_config_value(app: Application, param: str) -> Optional[str]:
+    ws = app.bot_data.get("ws_config")
+    if not ws:
+        return None
+
+    rows = _read_all_records(ws)
+    for r in rows:
+        if str(r.get("parametro", "")).strip() == str(param).strip():
+            val = str(r.get("valor", "")).strip()
+            return val if val else None
+
+    return None
 
 # =========================
 # Sheets config cache loaders
@@ -3749,14 +3761,6 @@ async def on_media(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 # =========================
-# Obtener file_id (TEMPORAL)
-# =========================
-async def obtener_file_id(update, context):
-    if update.message.photo:
-        photo = update.message.photo[-1]
-        await update.message.reply_text(photo.file_id)
-
-# =========================
 # Error handler
 # =========================
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -3787,7 +3791,6 @@ def main():
     app.add_handler(CallbackQueryHandler(on_callbacks))
 
     app.add_handler(MessageHandler(filters.LOCATION, on_location))
-    app.add_handler(MessageHandler(filters.PHOTO, obtener_file_id))
     app.add_handler(MessageHandler(filters.PHOTO | filters.VIDEO, on_media))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, on_text))
 
@@ -3799,10 +3802,12 @@ def main():
         ws_casos = sh.worksheet("CASOS")
         ws_det = sh.worksheet("DETALLE_PASOS")
         ws_evid = sh.worksheet("EVIDENCIAS")
+        ws_config = sh.worksheet("CONFIG")
 
         _ensure_headers(ws_casos, CASOS_COLUMNS)
         _ensure_headers(ws_det, DETALLE_PASOS_COLUMNS)
         _ensure_headers(ws_evid, EVIDENCIAS_COLUMNS)
+        _ensure_headers(ws_config, CONFIG_COLUMNS)
 
         idx_casos = build_index(ws_casos, ["case_id"])
         idx_det = build_index(ws_det, ["case_id", "paso_numero", "attempt"])
@@ -3822,6 +3827,7 @@ def main():
         app.bot_data["ws_casos"] = ws_casos
         app.bot_data["ws_det"] = ws_det
         app.bot_data["ws_evid"] = ws_evid
+        app.bot_data["ws_config"] = ws_config
         app.bot_data["idx_casos"] = idx_casos
         app.bot_data["idx_det"] = idx_det
         app.bot_data["idx_evid"] = idx_evid
