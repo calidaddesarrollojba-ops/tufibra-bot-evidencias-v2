@@ -96,7 +96,7 @@ EXTERNA_MENU: List[Tuple[int, str, int]] = [
     (2, "CTO", 6),
     (3, "POTENCIA EN CTO", 7),
     (4, "PRECINTO ROTULADOR", 8),
-    (5, "FALSO TRAMO", 9),
+    (5, "DROP QUE INGRESA AL DOMICILIO", 9),
     (6, "ANCLAJE", 10),
     (7, "ROSETA + MEDICION POTENCIA", 11),
     (8, "MAC ONT", 12),
@@ -1503,6 +1503,20 @@ async def send_step_guide(context: ContextTypes.DEFAULT_TYPE, chat_id: int, step
         15: "GUIA_ACTA_INSTALACION",
     }
 
+    guide_notes = {
+        5: "Foto panoramica de la casa, debe verse toda la fachada y si hay placa tomar una segunda foto.",
+        6: "Debe verse claramente el rotulado de la CTO",
+        7: "La pantalla del power meter debe ser legible y verse en patchord conectado en el puerto. Pueden ser mas de 1 foto",
+        8: "Debe verse el precinto y el rotulado correctamente.",
+        9: "Debe verse el drop que ingresa al domicilio.",
+        10: "Debe verse el anclaje y los templadores correctamente colocados",
+        11: "Debe verse la roseta (con 4 vueltas) y la medición de potencia.",
+        12: "La etiqueta MAC de la ONT debe ser legible.",
+        13: "Debe verse la ONT instalada y conectada. Foto debe ser panoramica",
+        14: "Debe verse la la fecha y el id del test de velocidad",
+        15: "Debe verse el acta completa con firma. No debe taparse ningun dato. Tomar foto con camara directa sin Timestmap.",
+    }
+
     param = guide_map.get(step_no)
     if not param:
         return
@@ -1511,11 +1525,13 @@ async def send_step_guide(context: ContextTypes.DEFAULT_TYPE, chat_id: int, step
     if not file_id:
         return
 
+    note = guide_notes.get(step_no, "")
+
     try:
         await context.bot.send_photo(
             chat_id=chat_id,
             photo=file_id,
-            caption=f"📷 Ejemplo de foto correcta: {STEP_MEDIA_DEFS.get(step_no, (f'PASO {step_no}',))[0]}",
+            caption=f"📷 Ejemplo de foto correcta\n\n⚠️ {note}",
         )
     except Exception as e:
         log.warning(f"No pude enviar foto guía del paso {step_no}: {e}")
