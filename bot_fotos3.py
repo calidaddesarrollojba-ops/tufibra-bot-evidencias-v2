@@ -1488,6 +1488,38 @@ def get_config_value(app: Application, param: str) -> Optional[str]:
 
     return None
 
+async def send_step_guide(context: ContextTypes.DEFAULT_TYPE, chat_id: int, step_no: int) -> None:
+    guide_map = {
+        5: "GUIA_FACHADA",
+        6: "GUIA_CTO",
+        7: "GUIA_POTENCIA_CTO",
+        8: "GUIA_PRECINTO_ROTULADOR",
+        9: "GUIA_FALSO_TRAMO",
+        10: "GUIA_ANCLAJE",
+        11: "GUIA_ROSETA_POTENCIA",
+        12: "GUIA_MAC_ONT",
+        13: "GUIA_ONT",
+        14: "GUIA_TEST_VELOCIDAD",
+        15: "GUIA_ACTA_INSTALACION",
+    }
+
+    param = guide_map.get(step_no)
+    if not param:
+        return
+
+    file_id = get_config_value(context.application, param)
+    if not file_id:
+        return
+
+    try:
+        await context.bot.send_photo(
+            chat_id=chat_id,
+            photo=file_id,
+            caption=f"📷 Ejemplo de foto correcta: {STEP_MEDIA_DEFS.get(step_no, (f'PASO {step_no}',))[0]}",
+        )
+    except Exception as e:
+        log.warning(f"No pude enviar foto guía del paso {step_no}: {e}")
+
 # =========================
 # Sheets config cache loaders
 # =========================
@@ -2773,6 +2805,7 @@ async def on_callbacks(update: Update, context: ContextTypes.DEFAULT_TYPE):
             set_step_owner(case_id, step_no, int(st["attempt"]), user_id, user_name)
             update_case(case_id, phase=PHASE_STEP_MEDIA, pending_step_no=step_no, current_step_no=step_no, user_id=user_id, username=user_name)
             await safe_q_answer(q, "Cargar foto…", show_alert=False)
+            await send_step_guide(context, chat_id, step_no)
             await context.bot.send_message(chat_id=chat_id, text=prompt_media_step(step_no))
             return
 
@@ -2881,6 +2914,7 @@ async def on_callbacks(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await safe_q_answer(q, "✅ Autorización aprobada (OFF)", show_alert=False)
             await safe_edit_message_text(q, "✅ Autorización aprobada automáticamente (APROBACION OFF). Continuando a CARGAR FOTO…")
 
+            await send_step_guide(context, chat_id, step_no)
             await context.bot.send_message(chat_id=chat_id, text=prompt_media_step(step_no))
             return
 
@@ -2955,6 +2989,7 @@ async def on_callbacks(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
 
             update_case(case_id, phase=PHASE_STEP_MEDIA, pending_step_no=step_no, current_step_no=step_no, admin_pending=0)
+            await send_step_guide(context, chat_id, step_no)
             await context.bot.send_message(chat_id=chat_id, text=prompt_media_step(step_no))
             return
 
