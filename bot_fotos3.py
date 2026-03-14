@@ -1053,11 +1053,36 @@ def reopen_step(case_id: int, step_no: int, admin_name: str, reason: str, mode: 
         conn.execute(
             """
             INSERT INTO step_state(
-                case_id, step_no, attempt, submitted, approved, reviewed_by, reviewed_at, created_at,
-                reject_reason, reject_reason_by, reject_reason_at, state_name,
-                taken_by_user_id, taken_by_name, taken_at, reopened_by, reopened_at, reopen_reason, blocked
+                case_id,
+                step_no,
+                attempt,
+                submitted,
+                approved,
+                reviewed_by,
+                reviewed_at,
+                created_at,
+                reject_reason,
+                reject_reason_by,
+                reject_reason_at,
+                state_name,
+                taken_by_user_id,
+                taken_by_name,
+                taken_at,
+                reopened_by,
+                reopened_at,
+                reopen_reason,
+                blocked
             )
-            VALUES(?,?,?,0,NULL,NULL,NULL,?,NULL,NULL,NULL,?,?,?,?,?,?,0)
+            VALUES(
+                ?, ?, ?, 
+                0, NULL, NULL, NULL,
+                ?, 
+                NULL, NULL, NULL,
+                ?, 
+                NULL, NULL, NULL,
+                ?, ?, ?,
+                0
+            )
             """,
             (
                 case_id,
@@ -1065,9 +1090,6 @@ def reopen_step(case_id: int, step_no: int, admin_name: str, reason: str, mode: 
                 attempt,
                 now_utc(),
                 STEP_STATE_REABIERTO,
-                None,
-                None,
-                None,
                 admin_name,
                 now_utc(),
                 reason,
@@ -1077,7 +1099,6 @@ def reopen_step(case_id: int, step_no: int, admin_name: str, reason: str, mode: 
 
     mark_step_blocked_from(case_id, step_no, mode, True)
     return get_latest_step_state(case_id, step_no)
-
 
 def save_auth_text(case_id: int, auth_step_no: int, attempt: int, text: str, tg_message_id: int):
     with db() as conn:
