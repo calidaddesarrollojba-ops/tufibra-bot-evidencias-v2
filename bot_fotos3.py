@@ -3089,12 +3089,39 @@ async def on_callbacks(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await safe_q_answer(q, "Caso no válido o cerrado.", show_alert=True)
             return
 
-        st = ensure_step_state(case_id, step_no, owner_user_id=user_id, owner_name=user_name)
+        # =========================
+        # BLINDAJE ANTI-DOBLE-CLICK
+        # =========================
+        latest = get_latest_step_state(case_id, step_no)
+        if latest:
+            latest_state = (latest["state_name"] or "").strip().upper()
+
+            # Si ya fue enviado a revisión, no volver a procesar nada
+            if latest_state == STEP_STATE_EN_REVISION or (
+                int(latest["submitted"] or 0) == 1 and latest["approved"] is None
+            ):
+                await safe_q_answer(q, "⏳ Este paso ya fue enviado a revisión.", show_alert=True)
+                return
+
+            # Si ya está aprobado, tampoco reprocesar
+            if latest_state == STEP_STATE_APROBADO or (
+                latest["approved"] is not None and int(latest["approved"]) == 1
+            ):
+                await safe_q_answer(q, "✅ Este paso ya está aprobado.", show_alert=True)
+                return
+
+        # Solo si realmente sigue en carga, recién continuamos
+        st = get_active_unsubmitted_step_state(case_id, step_no)
+        if not st:
+            st = ensure_step_state(case_id, step_no, owner_user_id=user_id, owner_name=user_name)
+
         attempt = int(st["attempt"])
 
-        if int(st["submitted"]) == 1 and st["approved"] is None:
-            await safe_q_answer(q, "Este paso ya fue enviado a revisión.", show_alert=True)
+        # Revalidación por seguridad
+        if int(st["submitted"] or 0) == 1 and st["approved"] is None:
+            await safe_q_answer(q, "⏳ Este paso ya fue enviado a revisión.", show_alert=True)
             return
+
         if st["approved"] is not None and int(st["approved"]) == 1:
             await safe_q_answer(q, "✅ Este paso ya está aprobado.", show_alert=True)
             return
@@ -3175,6 +3202,7 @@ async def on_callbacks(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await show_evidence_menu(chat_id, context, case_row2)
             return
 
+        # Desde aquí pasa a revisión UNA sola vez
         mark_submitted(case_id, step_no, attempt)
         update_case(case_id, phase=PHASE_STEP_REVIEW, pending_step_no=step_no, current_step_no=step_no, admin_pending=1)
         clear_case_lock(case_id)
